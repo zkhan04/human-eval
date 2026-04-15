@@ -60,7 +60,8 @@ with open(question_path, 'r') as file:
   for line in file:
       data.append(json.loads(line))
 
-for d in data[:3]:
+for (i, d) in enumerate(data[:10]):
+   out_file = open(f"eval-{i}.py", "w")
    prompt = d["prompt"]
    test = d["test"]
    function_name = d["entry_point"]
@@ -68,10 +69,19 @@ for d in data[:3]:
    # send the prompt to LMStudio
    completion = generate_one_solution(prompt)
 
-   codestring = f"{IMPORTS}{completion}{test}\n\ncheck({function_name})"
-   print(codestring)
+   if completion:
+       # removing markdown code formatting
+       completion = completion.replace("```python\n", "").replace("```python", "").replace("```", "")
+       completion = completion.strip("` \n[")
+       
+       # remove \\n (double escaped newlines)
+       if "\\n" in completion and "\n" not in completion:
+           completion = completion.replace("\\n", "\n")
+   else:
+       completion = "# Failed to generate solution"
 
-   exec(codestring)
+   codestring = f"{IMPORTS}{completion}\n\n{test}\n\ncheck({function_name})"
+   out_file.write(codestring)
 
    # My guess is: we have to stitch the prompt and completion together?
    # As well as the included tests, so we have a string that we can pass into exec. Fun!
@@ -81,7 +91,3 @@ for d in data[:3]:
 
    # write the solution to some form of external storage / some queue for processing
    # or, just a file for now :) will probably have to run the solutions inside of docker.
-
-
-
-
